@@ -9,16 +9,16 @@ from plotly.subplots import make_subplots
 
 
 COLORS = {
-    "navy": "#173B34",
-    "blue": "#6DAEF0",
-    "cyan": "#52A7B1",
+    "navy": "#17324D",
+    "blue": "#2878B5",
+    "cyan": "#31A6B8",
     "solar": "#F2B84B",
-    "fuel": "#23856B",
+    "fuel": "#16A085",
     "battery": "#7B61A8",
-    "load": "#225F7A",
+    "load": "#334E68",
     "temperature": "#D96C5F",
-    "grid": "rgba(96, 108, 118, 0.14)",
-    "muted": "#78838F",
+    "grid": "rgba(23, 50, 77, 0.10)",
+    "muted": "#6B7C8F",
 }
 
 
@@ -27,14 +27,14 @@ def _style(fig: go.Figure, *, height: int = 360, hovermode: str = "x unified") -
         template="plotly_white",
         height=height,
         hovermode=hovermode,
-        margin={"l": 18, "r": 18, "t": 32, "b": 18},
-        font={"family": "Inter, system-ui, sans-serif", "color": "#687480", "size": 10},
-        legend={"orientation": "h", "y": 1.03, "yanchor": "bottom", "x": 0.0, "font": {"size": 10}},
+        margin={"l": 16, "r": 16, "t": 28, "b": 16},
+        font={"family": "Inter, system-ui, sans-serif", "color": COLORS["navy"]},
+        legend={"orientation": "h", "y": 1.03, "yanchor": "bottom", "x": 0.0},
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
     )
-    fig.update_xaxes(showgrid=False, title=None, tickfont={"size": 9, "color": "#7b8792"}, linecolor="#e2e5e8")
-    fig.update_yaxes(gridcolor=COLORS["grid"], zeroline=False, tickfont={"size": 9, "color": "#7b8792"})
+    fig.update_xaxes(showgrid=False, title=None)
+    fig.update_yaxes(gridcolor=COLORS["grid"], zeroline=False)
     return fig
 
 

@@ -62,20 +62,18 @@ def render_overview(bundle: SimulationBundle) -> None:
     has_load = "carga_total_kW" in data
     has_battery = "potencia_bateria_kW" in data
 
-    with st.container(border=True):
-        _section("Síntese · indicadores do horizonte")
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric(
-            "Carga estimada · pico",
-            f"{data['carga_total_kW'].max():.1f} kW" if has_load else "Aguardando sinal",
-        )
-        c2.metric("Energia FV · horizonte", f"{bundle.solar_metrics['energy_kWh']:.2f} kWh")
-        c3.metric("Potência FV · pico", f"{bundle.solar_metrics['peak_power_kW']:.2f} kW")
-        c4.metric("Energia PEMFC · entregue", f"{bundle.fuel_cell_metrics['energy_delivered_kWh']:.2f} kWh")
-        c5.metric(
-            "Bateria · SOC final",
-            f"{data['soc_bateria_pct'].iloc[-1]:.1f}%" if has_battery else "Em integração",
-        )
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric(
+        "Carga estimada · pico",
+        f"{data['carga_total_kW'].max():.1f} kW" if has_load else "Aguardando sinal",
+    )
+    c2.metric("Energia FV · horizonte", f"{bundle.solar_metrics['energy_kWh']:.2f} kWh")
+    c3.metric("Potência FV · pico", f"{bundle.solar_metrics['peak_power_kW']:.2f} kW")
+    c4.metric("Energia PEMFC · entregue", f"{bundle.fuel_cell_metrics['energy_delivered_kWh']:.2f} kWh")
+    c5.metric(
+        "Bateria · SOC final",
+        f"{data['soc_bateria_pct'].iloc[-1]:.1f}%" if has_battery else "Em integração",
+    )
 
     if bundle.synthetic_signals_enabled:
         st.markdown(
