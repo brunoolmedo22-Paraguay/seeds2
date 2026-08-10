@@ -195,6 +195,26 @@ def build_overview(
         overview["carga_origem"] = "CSV"
     if simulate_missing_signals:
         overview = synthesize_monitoring_signals(overview)
+
+    # Fechamento elétrico do barramento da EMS. A convenção da bateria é
+    # positiva na descarga e negativa na carga; portanto ela entra
+    # algebricamente na geração líquida disponível para atender a demanda.
+    if "potencia_bateria_kW" in overview:
+        battery_power = overview["potencia_bateria_kW"].to_numpy(dtype=float)
+    else:
+        battery_power = np.zeros(len(overview), dtype=float)
+
+    overview["potencia_geracao_total_kW"] = (
+        overview["potencia_fv_kW"].to_numpy(dtype=float)
+        + overview["potencia_fc_entregue_kW"].to_numpy(dtype=float)
+        + battery_power
+    )
+
+    if "carga_total_kW" in overview:
+        overview["desbalanco_potencia_kW"] = (
+            overview["potencia_geracao_total_kW"].to_numpy(dtype=float)
+            - overview["carga_total_kW"].to_numpy(dtype=float)
+        )
     return overview
 
 

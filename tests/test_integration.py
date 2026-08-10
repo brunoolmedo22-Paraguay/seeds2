@@ -100,6 +100,22 @@ class ModelIntegrationTests(unittest.TestCase):
         soc = self.bundle.overview["soc_bateria_pct"]
         self.assertTrue(soc.between(0.0, 100.0).all())
 
+    def test_system_balance_uses_signed_battery_power(self):
+        overview = self.bundle.overview
+        expected_generation = (
+            overview["potencia_fv_kW"].to_numpy(dtype=float)
+            + overview["potencia_fc_entregue_kW"].to_numpy(dtype=float)
+            + overview["potencia_bateria_kW"].to_numpy(dtype=float)
+        )
+        np.testing.assert_allclose(
+            overview["potencia_geracao_total_kW"].to_numpy(dtype=float),
+            expected_generation,
+        )
+        np.testing.assert_allclose(
+            overview["desbalanco_potencia_kW"].to_numpy(dtype=float),
+            expected_generation - overview["carga_total_kW"].to_numpy(dtype=float),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

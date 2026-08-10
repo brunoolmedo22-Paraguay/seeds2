@@ -90,6 +90,107 @@ def overview_power_chart(data: pd.DataFrame) -> go.Figure:
     return _style(fig, height=410)
 
 
+def system_balance_chart(data: pd.DataFrame) -> go.Figure:
+    """Compara demanda e geração líquida total e destaca o desbalanço.
+
+    A potência da bateria segue a convenção da EMS: positiva na descarga e
+    negativa na carga. Assim, a geração líquida é FV + PEMFC + bateria.
+    """
+    if "carga_total_kW" not in data:
+        return empty_chart(
+            "Aguardando o sinal de carga para fechar o balanço do sistema.<br>"
+            "Ative os sinais demonstrativos ou forneça carga_total_kW no CSV.",
+            height=360,
+        )
+
+    timestamp = pd.to_datetime(data["timestamp"])
+    load = pd.to_numeric(data["carga_total_kW"], errors="coerce").to_numpy(dtype=float)
+
+    if "potencia_geracao_total_kW" in data:
+        generation = pd.to_numeric(
+            data["potencia_geracao_total_kW"], errors="coerce"
+        ).to_numpy(dtype=float)
+    else:
+        battery = (
+            pd.to_numeric(data["potencia_bateria_kW"], errors="coerce").to_numpy(dtype=float)
+            if "potencia_bateria_kW" in data
+            else np.zeros(len(data), dtype=float)
+        )
+        generation = (
+            pd.to_numeric(data["potencia_fv_kW"], errors="coerce").to_numpy(dtype=float)
+            + pd.to_numeric(data["potencia_fc_entregue_kW"], errors="coerce").to_numpy(dtype=float)
+            + battery
+        )
+
+    balance = generation - load
+    excess = balance > 1e-9
+    deficit = balance < -1e-9
+
+    fig = go.Figure()
+
+    # Áreas entre as curvas. NaN quebra o preenchimento quando o sinal muda,
+    # deixando excedentes e déficits visualmente independentes.
+    fig.add_trace(
+        go.Scatter(
+            x=timestamp, y=np.where(excess, load, np.nan),
+            mode="lines", line={"width": 0}, showlegend=False,
+            hoverinfo="skip", connectgaps=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=timestamp, y=np.where(excess, generation, np.nan),
+            mode="lines", line={"width": 0},
+            fill="tonexty", fillcolor="rgba(22, 160, 133, 0.16)",
+            name="Excedente", hoverinfo="skip", connectgaps=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=timestamp, y=np.where(deficit, generation, np.nan),
+            mode="lines", line={"width": 0}, showlegend=False,
+            hoverinfo="skip", connectgaps=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=timestamp, y=np.where(deficit, load, np.nan),
+            mode="lines", line={"width": 0},
+            fill="tonexty", fillcolor="rgba(217, 108, 95, 0.16)",
+            name="Déficit", hoverinfo="skip", connectgaps=False,
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=timestamp, y=load, mode="lines", name="Carga",
+            line={"color": COLORS["load"], "width": 3},
+            customdata=balance,
+            hovertemplate=(
+                "Carga: %{y:.2f} kW<br>"
+                "Balanço (geração − carga): %{customdata:+.2f} kW<extra></extra>"
+            ),
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=timestamp, y=generation, mode="lines", name="Geração total",
+            line={"color": COLORS["blue"], "width": 3},
+            customdata=balance,
+            hovertemplate=(
+                "Geração total: %{y:.2f} kW<br>"
+                "Balanço (geração − carga): %{customdata:+.2f} kW<extra></extra>"
+            ),
+        )
+    )
+
+    fig.add_hline(
+        y=0.0, line_width=1, line_dash="dot", line_color=COLORS["grid"]
+    )
+    fig.update_yaxes(title="Potência (kW)")
+    return _style(fig, height=390)
+
+
 def _series_energy_kwh(timestamp: pd.Series, power_kw: pd.Series) -> float:
     time_s = (
         pd.to_datetime(timestamp) - pd.to_datetime(timestamp).iloc[0]

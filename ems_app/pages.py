@@ -17,6 +17,7 @@ from ems_app.charts import (
     input_power_chart,
     input_weather_chart,
     overview_power_chart,
+    system_balance_chart,
     pv_forecast_chart,
     solar_efficiency_chart,
     source_energy_shares,
@@ -83,8 +84,20 @@ def render_overview(bundle: SimulationBundle) -> None:
             unsafe_allow_html=True,
         )
 
-    _section("Balanço do sistema · horizonte monitorado")
+    _section("Potências do sistema · fontes, bateria e carga")
     st.plotly_chart(overview_power_chart(data), width="stretch", key="overview_power")
+
+    _section("Fechamento do balanço · geração total x carga")
+    st.plotly_chart(system_balance_chart(data), width="stretch", key="overview_balance")
+    if has_load:
+        max_abs_imbalance = float(data["desbalanco_potencia_kW"].abs().max())
+        mean_abs_imbalance = float(data["desbalanco_potencia_kW"].abs().mean())
+        st.caption(
+            "Geração total = FV + PEMFC + bateria. "
+            "A bateria entra com sinal positivo quando descarrega e negativo quando carrega. "
+            f"|desbalanço| máximo nesta janela: {max_abs_imbalance:.2f} kW · "
+            f"médio: {mean_abs_imbalance:.2f} kW."
+        )
 
     shares = source_energy_shares(data)
     dominant_source = max(shares, key=shares.get)
