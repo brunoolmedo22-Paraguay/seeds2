@@ -19,8 +19,14 @@ from ems_app.charts import (
     overview_power_chart,
     pv_forecast_chart,
     solar_efficiency_chart,
+    source_energy_shares,
+    source_share_donut,
 )
-from ems_app.data_pipeline import dataframe_to_csv_bytes, load_input_csv
+from ems_app.data_pipeline import (
+    available_observation_start_hours,
+    dataframe_to_csv_bytes,
+    load_input_csv,
+)
 from ems_app.model_runner import SimulationBundle
 from ems_app.style import page_header
 from ems_core.solar.simulation.automation import build_fixed_automation_module
@@ -42,10 +48,13 @@ def _download(frame: pd.DataFrame, label: str, filename: str, key: str) -> None:
 
 
 def render_overview(bundle: SimulationBundle) -> None:
+    window_start = pd.Timestamp(bundle.input_data["timestamp"].iloc[0])
+    window_end = window_start + pd.Timedelta(minutes=120)
     st.markdown(
         page_header(
             "Visão geral do sistema",
-            "Monitoramento integrado da previsão fotovoltaica e da resposta da célula a combustível.",
+            "Monitoramento integrado · "
+            f"{window_start:%H:%M} → {window_end:%H:%M} · 120 minutos, ponto a ponto.",
         ),
         unsafe_allow_html=True,
     )
@@ -77,6 +86,32 @@ def render_overview(bundle: SimulationBundle) -> None:
     _section("Balanço do sistema · horizonte monitorado")
     st.plotly_chart(overview_power_chart(data), width="stretch", key="overview_power")
 
+    shares = source_energy_shares(data)
+    dominant_source = max(shares, key=shares.get)
+    dominant_share = shares[dominant_source]
+    share_items = "".join(
+        f"<li><span>{name}</span><strong>{value:.1f}%</strong></li>"
+        for name, value in shares.items()
+    )
+    donut_col, reading_col = st.columns([1.05, 1.35])
+    with donut_col:
+        _section("Participação · quem forneceu a energia")
+        st.plotly_chart(source_share_donut(data), width="stretch", key="overview_share")
+    with reading_col:
+        _section("Leitura rápida · sem complicação")
+        st.markdown(
+            f"""
+            <div class="quick-read">
+              <span class="quick-kicker">Fonte principal nesta janela</span>
+              <h3>{dominant_source}</h3>
+              <p><strong>{dominant_share:.1f}%</strong> da energia entregue pelas fontes veio dela.</p>
+              <ul>{share_items}</ul>
+              <div class="quick-note">Esta dona mostra a origem da energia produzida. A cobertura real da carga e o despacho ideal serão definidos quando o otimizador estiver conectado.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
     left, right = st.columns(2)
     with left:
         _section("Fotovoltaica · previsão de geração")
@@ -89,7 +124,11 @@ def render_overview(bundle: SimulationBundle) -> None:
     st.plotly_chart(battery_chart(data), width="stretch", key="overview_battery")
 
 
-def render_inputs(bundle: SimulationBundle, sample_path: Path) -> None:
+def render_inputs(
+    bundle: SimulationBundle,
+    sample_path: Path,
+    available_hours: list[int],
+) -> None:
     st.markdown(
         page_header(
             "Entradas",
@@ -102,6 +141,13 @@ def render_inputs(bundle: SimulationBundle, sample_path: Path) -> None:
     left, right = st.columns([1.05, 1.35])
     with left:
         _section("Fonte de dados")
+        st.selectbox(
+            "Hora inicial da janela",
+            options=available_hours,
+            format_func=lambda hour: f"{hour:02d}:00 → {hour + 2:02d}:00",
+            key="observation_start_hour",
+            help="A app sempre processa os 120 minutos seguintes, com resolução de 1 minuto.",
+        )
         uploaded = st.file_uploader(
             "Carregar CSV da EMS",
             type=["csv", "txt"],
@@ -117,17 +163,25 @@ def render_inputs(bundle: SimulationBundle, sample_path: Path) -> None:
                 except ValueError as exc:
                     st.error(str(exc))
                 else:
+                    uploaded_hours = available_observation_start_hours(parsed)
+                    if not uploaded_hours:
+                        st.error("O CSV precisa cobrir pelo menos 120 minutos consecutivos.")
+                        return
                     st.session_state["input_dataframe"] = parsed
                     st.session_state["active_input_hash"] = digest
                     st.session_state["input_source_label"] = uploaded.name
+                    if st.session_state["observation_start_hour"] not in uploaded_hours:
+                        st.session_state["observation_start_hour"] = uploaded_hours[0]
                     st.rerun()
 
         b1, b2 = st.columns(2)
         with b1:
             st.download_button(
-                "Baixar CSV padrão",
-                data=sample_path.read_bytes(),
-                file_name="entrada_padrao_ems.csv",
+                "Baixar janela ativa",
+                data=dataframe_to_csv_bytes(bundle.input_data),
+                file_name=(
+                    f"entrada_ems_{st.session_state['observation_start_hour']:02d}h_120min.csv"
+                ),
                 mime="text/csv",
                 width="stretch",
             )
@@ -136,6 +190,7 @@ def render_inputs(bundle: SimulationBundle, sample_path: Path) -> None:
                 st.session_state["input_dataframe"] = load_input_csv(sample_path)
                 st.session_state["active_input_hash"] = "DEFAULT"
                 st.session_state["input_source_label"] = "entrada_padrao_ems.csv"
+                st.session_state["observation_start_hour"] = 15
                 st.session_state["input_uploader_generation"] = (
                     int(st.session_state.get("input_uploader_generation", 0)) + 1
                 )
@@ -146,7 +201,10 @@ def render_inputs(bundle: SimulationBundle, sample_path: Path) -> None:
             key="simulate_missing_signals",
             help="Gera sinais demonstrativos para completar o dashboard. Não substitui o futuro modelo de bateria.",
         )
-        st.caption(f"Fonte ativa: {st.session_state.get('input_source_label', 'CSV padrão')}")
+        st.caption(
+            f"Fonte ativa: {st.session_state.get('input_source_label', 'CSV padrão')} · "
+            f"{len(st.session_state['input_dataframe']):,} registros disponíveis"
+        )
 
     with right:
         _section("Contrato mínimo do CSV")
@@ -166,6 +224,13 @@ def render_inputs(bundle: SimulationBundle, sample_path: Path) -> None:
         )
 
     _section("Pré-visualização dos dados normalizados")
+    start = pd.Timestamp(bundle.input_data["timestamp"].iloc[0])
+    end = start + pd.Timedelta(minutes=120)
+    st.markdown(
+        f'<div class="notice"><strong>Janela ativa: {start:%H:%M} → {end:%H:%M}.</strong> '
+        f'Os dois modelos receberam exatamente {len(bundle.input_data)} pontos, um por minuto.</div>',
+        unsafe_allow_html=True,
+    )
     st.dataframe(bundle.input_data, hide_index=True, width="stretch", height=250)
     c1, c2 = st.columns(2)
     with c1:
@@ -255,11 +320,7 @@ def render_models(bundle: SimulationBundle, fuel_cell_model) -> None:
             unsafe_allow_html=True,
         )
         _section("Configuração temporal")
-        st.number_input(
-            "Passo interno da simulação (s)", min_value=1.0, max_value=60.0, step=1.0,
-            key="fc_internal_step_s",
-            help="O modelo original usa 1 s. Valores maiores aceleram janelas longas sem alterar as equações estáticas.",
-        )
+        st.metric("Resolução de integração nesta app", "60 s · 1 ponto/min")
         f1, f2, f3, f4 = st.columns(4)
         f1.metric("Potência entregue · pico", f"{bundle.fuel_cell_metrics['peak_delivered_kW']:.2f} kW")
         f2.metric("Energia entregue", f"{bundle.fuel_cell_metrics['energy_delivered_kWh']:.2f} kWh")

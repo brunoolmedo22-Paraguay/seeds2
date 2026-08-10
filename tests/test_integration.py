@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 from io import BytesIO
+from pathlib import Path
 import unittest
 
 import numpy as np
 
-from ems_app.data_pipeline import load_input_csv
+from ems_app.data_pipeline import (
+    available_observation_start_hours,
+    load_default_profile,
+    load_input_csv,
+    select_observation_window,
+)
 from ems_app.model_runner import (
     FuelCellRunConfig,
     SolarRunConfig,
@@ -33,6 +39,23 @@ class InputContractTests(unittest.TestCase):
         ).encode("utf-8")
         with self.assertRaisesRegex(ValueError, "duplicados"):
             load_input_csv(payload)
+
+    def test_default_source_builds_exact_120_minute_window(self):
+        root = Path(__file__).resolve().parents[1]
+        source = load_default_profile(root / "data" / "entrada_padrao_ems.csv")
+        self.assertEqual(available_observation_start_hours(source), list(range(23)))
+        window = select_observation_window(source, 15)
+        self.assertEqual(len(window), 120)
+        self.assertEqual(str(window["timestamp"].iloc[0]), "2026-08-10 15:00:00")
+        self.assertEqual(str(window["timestamp"].iloc[-1]), "2026-08-10 16:59:00")
+        step = window["timestamp"].diff().dropna().dt.total_seconds()
+        self.assertTrue((step == 60.0).all())
+
+    def test_operational_defaults_match_the_unified_app(self):
+        solar = SolarRunConfig()
+        fuel_cell = FuelCellRunConfig()
+        self.assertEqual((solar.n_series, solar.n_parallel), (2, 3))
+        self.assertEqual(fuel_cell.internal_time_step_s, 60.0)
 
 
 class ModelIntegrationTests(unittest.TestCase):

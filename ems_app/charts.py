@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -87,6 +88,68 @@ def overview_power_chart(data: pd.DataFrame) -> go.Figure:
         )
     fig.update_yaxes(title="Potência (kW)")
     return _style(fig, height=410)
+
+
+def _series_energy_kwh(timestamp: pd.Series, power_kw: pd.Series) -> float:
+    time_s = (
+        pd.to_datetime(timestamp) - pd.to_datetime(timestamp).iloc[0]
+    ).dt.total_seconds().to_numpy(dtype=float)
+    power = np.clip(pd.to_numeric(power_kw).to_numpy(dtype=float), 0.0, None)
+    if len(power) < 2:
+        return 0.0
+    return float((0.5 * (power[1:] + power[:-1]) * np.diff(time_s)).sum() / 3600.0)
+
+
+def source_energy_shares(data: pd.DataFrame) -> dict[str, float]:
+    """Participação na energia positiva fornecida durante a janela ativa."""
+    energy = {
+        "Solar fotovoltaica": _series_energy_kwh(
+            data["timestamp"], data["potencia_fv_kW"]
+        ),
+        "Célula a combustível": _series_energy_kwh(
+            data["timestamp"], data["potencia_fc_entregue_kW"]
+        ),
+    }
+    if "potencia_bateria_kW" in data:
+        energy["Bateria"] = _series_energy_kwh(
+            data["timestamp"], data["potencia_bateria_kW"]
+        )
+    total = sum(energy.values())
+    if total <= 0.0:
+        return {name: 0.0 for name in energy}
+    return {name: value / total * 100.0 for name, value in energy.items()}
+
+
+def source_share_donut(data: pd.DataFrame) -> go.Figure:
+    shares = source_energy_shares(data)
+    labels = list(shares)
+    values = list(shares.values())
+    color_map = {
+        "Solar fotovoltaica": COLORS["solar"],
+        "Célula a combustível": COLORS["fuel"],
+        "Bateria": COLORS["battery"],
+    }
+    fig = go.Figure(
+        go.Pie(
+            labels=labels,
+            values=values,
+            hole=0.62,
+            sort=False,
+            textinfo="percent",
+            textposition="inside",
+            hovertemplate="%{label}<br>%{value:.1f}%<extra></extra>",
+            marker={"colors": [color_map[label] for label in labels], "line": {"color": "white", "width": 3}},
+        )
+    )
+    fig.add_annotation(
+        x=0.5,
+        y=0.5,
+        text="ORIGEM<br><b>DA ENERGIA</b>",
+        showarrow=False,
+        align="center",
+        font={"size": 12, "color": COLORS["muted"]},
+    )
+    return _style(fig, height=345, hovermode="closest")
 
 
 def pv_forecast_chart(solar_output: pd.DataFrame) -> go.Figure:
@@ -249,4 +312,3 @@ def fuel_cell_resources_chart(fuel_output: pd.DataFrame) -> go.Figure:
     fig.update_yaxes(title="H₂ (kg/h)", secondary_y=False)
     fig.update_yaxes(title="Eficiência PCI (%)", secondary_y=True, gridcolor="rgba(0,0,0,0)")
     return _style(fig, height=335)
-

@@ -15,9 +15,7 @@ APP_CSS = r"""
 
 html, body, [class*="css"] { font-family: Inter, system-ui, sans-serif; }
 [data-testid="stAppViewContainer"] {
-    background:
-        radial-gradient(circle at 92% 3%, rgba(49,166,184,.10), transparent 30rem),
-        linear-gradient(180deg, #f5f9fb 0%, #eef4f7 100%);
+    background: #ffffff;
 }
 [data-testid="stHeader"] { background: transparent; }
 .block-container { max-width: 1480px; padding-top: 1.35rem; padding-bottom: 3rem; }
@@ -72,13 +70,13 @@ html, body, [class*="css"] { font-family: Inter, system-ui, sans-serif; }
 .section-label { color: #48647b; font-size: .72rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; margin: 1.1rem 0 .5rem; }
 .notice {
     padding: .85rem 1rem; border-radius: 14px; color: #496175;
-    background: rgba(255,255,255,.68); border: 1px solid var(--line); font-size: .88rem;
+    background: #f7fafb; border: 1px solid var(--line); font-size: .88rem;
 }
 .notice strong { color: var(--ink); }
 .construction {
     min-height: 380px; display: grid; place-items: center; text-align: center;
     border: 1px dashed rgba(23,50,77,.24); border-radius: 20px;
-    background: rgba(255,255,255,.55); padding: 2rem;
+    background: #fbfcfd; padding: 2rem;
 }
 .construction .icon { font-size: 2.4rem; margin-bottom: .7rem; }
 .construction h3 { color: var(--ink); margin: 0 0 .5rem; font-size: 1.35rem; }
@@ -94,6 +92,19 @@ html, body, [class*="css"] { font-family: Inter, system-ui, sans-serif; }
     background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
     padding: .35rem; box-shadow: 0 8px 30px rgba(23,50,77,.04);
 }
+.quick-read {
+    min-height: 345px; box-sizing: border-box; padding: 1.5rem 1.6rem;
+    background: #f8fbfa; border: 1px solid rgba(22,160,133,.16); border-radius: 18px;
+    box-shadow: 0 8px 30px rgba(23,50,77,.04);
+}
+.quick-kicker { color: #558076; font-size: .72rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.quick-read h3 { color: var(--ink); font-size: 1.45rem; margin: .45rem 0 .2rem; }
+.quick-read p { color: var(--muted); margin: 0 0 1rem; }
+.quick-read p strong { color: var(--fuel); font-size: 1.15rem; }
+.quick-read ul { list-style: none; padding: 0; margin: .8rem 0 1rem; }
+.quick-read li { display: flex; justify-content: space-between; gap: 1rem; padding: .48rem 0; border-bottom: 1px solid var(--line); color: #48647b; }
+.quick-read li strong { color: var(--ink); }
+.quick-note { color: var(--muted); font-size: .78rem; line-height: 1.5; padding-top: .2rem; }
 [data-testid="stDataFrame"] { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 [data-testid="stTabs"] [data-baseweb="tab-list"] { gap: .35rem; }
 [data-testid="stTabs"] [data-baseweb="tab"] { border-radius: 10px; padding-left: 1rem; padding-right: 1rem; }
@@ -125,4 +136,3 @@ def sidebar_brand() -> str:
       <span>Energy Management System</span>
     </div>
     """
-

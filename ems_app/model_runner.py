@@ -17,8 +17,8 @@ from ems_core.pemfc.models.equivalent_65kw_dynamic import (
 
 @dataclass(frozen=True)
 class SolarRunConfig:
-    n_series: int = 3
-    n_parallel: int = 2
+    n_series: int = 2
+    n_parallel: int = 3
     soiling_losses_pct: float = 0.0
 
     @property
@@ -28,7 +28,7 @@ class SolarRunConfig:
 
 @dataclass(frozen=True)
 class FuelCellRunConfig:
-    internal_time_step_s: float = 10.0
+    internal_time_step_s: float = 60.0
 
 
 @dataclass

@@ -25,6 +25,8 @@ OPTIONAL_COLUMNS = (
     "V_bus_V",
 )
 
+OBSERVATION_WINDOW_MINUTES = 120
+
 
 def _slug(value: object) -> str:
     text = unicodedata.normalize("NFKD", str(value))
@@ -187,6 +189,72 @@ def load_default_profile(path: str | Path) -> pd.DataFrame:
     return load_input_csv(Path(path))
 
 
+def available_observation_start_hours(
+    input_data: pd.DataFrame,
+    *,
+    duration_minutes: int = OBSERVATION_WINDOW_MINUTES,
+) -> list[int]:
+    """Retorna horas inteiras com cobertura suficiente para uma janela completa."""
+    if input_data.empty:
+        return []
+    timestamps = pd.to_datetime(input_data["timestamp"])
+    first_day = timestamps.iloc[0].normalize()
+    minimum = timestamps.min()
+    maximum = timestamps.max()
+    last_offset = pd.Timedelta(minutes=duration_minutes - 1)
+    return [
+        hour
+        for hour in range(24)
+        if first_day + pd.Timedelta(hours=hour) >= minimum
+        and first_day + pd.Timedelta(hours=hour) + last_offset <= maximum
+    ]
+
+
+def select_observation_window(
+    input_data: pd.DataFrame,
+    start_hour: int,
+    *,
+    duration_minutes: int = OBSERVATION_WINDOW_MINUTES,
+) -> pd.DataFrame:
+    """Recorta e interpola uma janela exata de 120 pontos, um por minuto."""
+    if duration_minutes < 1:
+        raise ValueError("A duração da janela deve ser positiva.")
+    available = available_observation_start_hours(
+        input_data, duration_minutes=duration_minutes
+    )
+    if int(start_hour) not in available:
+        raise ValueError(
+            f"A fonte de dados não possui {duration_minutes} minutos completos "
+            f"a partir de {int(start_hour):02d}:00."
+        )
+
+    source = input_data.copy()
+    source["timestamp"] = pd.to_datetime(source["timestamp"])
+    source = source.set_index("timestamp").sort_index()
+    start = source.index[0].normalize() + pd.Timedelta(hours=int(start_hour))
+    target_index = pd.date_range(start, periods=duration_minutes, freq="1min")
+
+    expanded = source.reindex(source.index.union(target_index)).sort_index()
+    numeric_columns = expanded.select_dtypes(include=[np.number]).columns
+    if len(numeric_columns):
+        expanded.loc[:, numeric_columns] = expanded.loc[:, numeric_columns].interpolate(
+            method="time", limit_area="inside"
+        )
+    other_columns = [column for column in expanded.columns if column not in numeric_columns]
+    if other_columns:
+        expanded.loc[:, other_columns] = expanded.loc[:, other_columns].ffill().bfill()
+
+    window = expanded.reindex(target_index)
+    if window.isna().any().any():
+        missing = ", ".join(window.columns[window.isna().any()].tolist())
+        raise ValueError(
+            "Não foi possível completar a janela minuto a minuto. "
+            f"Colunas com lacunas: {missing}."
+        )
+    window.index.name = "timestamp"
+    return window.reset_index()
+
+
 def synthesize_monitoring_signals(
     aligned: pd.DataFrame,
     *,
@@ -237,4 +305,3 @@ def dataframe_to_csv_bytes(frame: pd.DataFrame, *, separator: str = ";") -> byte
     for column in export.select_dtypes(include=["datetime", "datetimetz"]).columns:
         export[column] = export[column].dt.strftime("%Y-%m-%d %H:%M:%S")
     return export.to_csv(index=False, sep=separator).encode("utf-8-sig")
-
