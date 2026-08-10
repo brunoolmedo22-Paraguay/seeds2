@@ -105,6 +105,7 @@ active_input_data = select_observation_window(
 
 with st.sidebar:
     st.markdown(sidebar_brand(), unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-section-label">Navegação</div>', unsafe_allow_html=True)
     navigation = st.radio(
         "Navegação",
         (
