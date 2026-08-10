@@ -33,6 +33,11 @@ from ems_core.pemfc.models.equivalent_65kw_dynamic import (
 BASE_DIR = Path(__file__).resolve().parent
 SAMPLE_PATH = BASE_DIR / "data" / "entrada_padrao_ems.csv"
 
+# Incrementar quando a estrutura do SimulationBundle/overview mudar.
+# O valor entra na chave de st.cache_data e evita reutilizar bundles antigos
+# após um deploy no Streamlit Cloud.
+SIMULATION_CACHE_SCHEMA = "balance-v2-2026-08-10"
+
 st.set_page_config(
     page_title="H₂V · Energy Management System",
     page_icon="⚡",
@@ -73,7 +78,10 @@ def simulate_cached(
     soiling_pct: float,
     internal_step_s: float,
     simulate_missing_signals: bool,
+    cache_schema: str,
 ):
+    # cache_schema é intencionalmente usado apenas para versionar a chave do cache.
+    _ = cache_schema
     return run_complete_simulation(
         input_data=input_data,
         solar_config=SolarRunConfig(
@@ -136,6 +144,7 @@ try:
             st.session_state["solar_soiling_pct"],
             st.session_state["fc_internal_step_s"],
             st.session_state["simulate_missing_signals"],
+            SIMULATION_CACHE_SCHEMA,
         )
 except (TypeError, ValueError, RuntimeError, KeyError) as exc:
     st.error(f"Não foi possível executar a simulação integrada: {exc}")
