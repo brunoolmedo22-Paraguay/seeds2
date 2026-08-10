@@ -18,7 +18,7 @@ html, body, [class*="css"] { font-family: Inter, system-ui, sans-serif; }
     background: #ffffff;
 }
 [data-testid="stHeader"] { background: transparent; }
-.block-container { max-width: 1480px; padding-top: 1.35rem; padding-bottom: 3rem; }
+.block-container { max-width: 1540px; padding-top: .85rem; padding-bottom: 1.6rem; }
 
 [data-testid="stSidebar"] {
     background: linear-gradient(165deg, #17324d 0%, #1d4960 58%, #146c6b 100%);
@@ -55,10 +55,10 @@ html, body, [class*="css"] { font-family: Inter, system-ui, sans-serif; }
 
 .page-head {
     display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem;
-    padding: .25rem .15rem 1.1rem;
+    padding: .15rem .15rem .65rem;
 }
-.page-head h1 { color: var(--ink); font-size: 2.05rem; line-height: 1.1; margin: 0; letter-spacing: -.035em; }
-.page-head p { color: var(--muted); margin: .42rem 0 0; font-size: .95rem; }
+.page-head h1 { color: var(--ink); font-size: 1.85rem; line-height: 1.08; margin: 0; letter-spacing: -.035em; }
+.page-head p { color: var(--muted); margin: .28rem 0 0; font-size: .88rem; }
 .status-pill {
     flex: none; display: inline-flex; align-items: center; gap: .45rem;
     padding: .48rem .72rem; border-radius: 999px; color: #0d6259;
@@ -67,10 +67,10 @@ html, body, [class*="css"] { font-family: Inter, system-ui, sans-serif; }
 }
 .status-dot { width: 7px; height: 7px; border-radius: 99px; background: #16a085; box-shadow: 0 0 0 4px rgba(22,160,133,.11); }
 
-.section-label { color: #48647b; font-size: .72rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; margin: 1.1rem 0 .5rem; }
+.section-label { color: #48647b; font-size: .68rem; font-weight: 700; letter-spacing: .085em; text-transform: uppercase; margin: .68rem 0 .34rem; }
 .notice {
-    padding: .85rem 1rem; border-radius: 14px; color: #496175;
-    background: #f7fafb; border: 1px solid var(--line); font-size: .88rem;
+    padding: .52rem .78rem; border-radius: 12px; color: #496175;
+    background: #f7fafb; border: 1px solid var(--line); font-size: .78rem; margin-top: .28rem;
 }
 .notice strong { color: var(--ink); }
 .construction {
@@ -83,28 +83,42 @@ html, body, [class*="css"] { font-family: Inter, system-ui, sans-serif; }
 .construction p { color: var(--muted); margin: 0; max-width: 560px; }
 
 [data-testid="stMetric"] {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
-    padding: .82rem 1rem; box-shadow: 0 8px 28px rgba(23,50,77,.045);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 13px;
+    padding: .46rem .72rem; min-height: 68px; box-shadow: 0 5px 18px rgba(23,50,77,.035);
 }
 [data-testid="stMetricLabel"] { color: var(--muted); }
-[data-testid="stMetricValue"] { color: var(--ink); }
+[data-testid="stMetricLabel"] p { font-size: .68rem; line-height: 1.12; margin-bottom: .08rem; }
+[data-testid="stMetricValue"] { color: var(--ink); font-size: 1.28rem; line-height: 1.05; }
 [data-testid="stPlotlyChart"] {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
-    padding: .35rem; box-shadow: 0 8px 30px rgba(23,50,77,.04);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 15px;
+    padding: .18rem; box-shadow: 0 5px 20px rgba(23,50,77,.035);
 }
 .quick-read {
-    min-height: 345px; box-sizing: border-box; padding: 1.5rem 1.6rem;
+    min-height: 260px; box-sizing: border-box; padding: 1.05rem 1.15rem;
     background: #f8fbfa; border: 1px solid rgba(22,160,133,.16); border-radius: 18px;
     box-shadow: 0 8px 30px rgba(23,50,77,.04);
 }
 .quick-kicker { color: #558076; font-size: .72rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
-.quick-read h3 { color: var(--ink); font-size: 1.45rem; margin: .45rem 0 .2rem; }
-.quick-read p { color: var(--muted); margin: 0 0 1rem; }
-.quick-read p strong { color: var(--fuel); font-size: 1.15rem; }
-.quick-read ul { list-style: none; padding: 0; margin: .8rem 0 1rem; }
-.quick-read li { display: flex; justify-content: space-between; gap: 1rem; padding: .48rem 0; border-bottom: 1px solid var(--line); color: #48647b; }
+.quick-read h3 { color: var(--ink); font-size: 1.18rem; margin: .32rem 0 .14rem; }
+.quick-read p { color: var(--muted); margin: 0 0 .55rem; font-size: .8rem; }
+.quick-read p strong { color: var(--fuel); font-size: 1.02rem; }
+.quick-read ul { list-style: none; padding: 0; margin: .4rem 0 0; }
+.quick-read li { display: flex; justify-content: space-between; gap: .7rem; padding: .31rem 0; border-bottom: 1px solid var(--line); color: #48647b; font-size: .76rem; }
 .quick-read li strong { color: var(--ink); }
 .quick-note { color: var(--muted); font-size: .78rem; line-height: 1.5; padding-top: .2rem; }
+
+.balance-note {
+    color: var(--muted); font-size: .72rem; line-height: 1.35;
+    padding: .12rem .15rem 0; white-space: normal;
+}
+.balance-note strong { color: var(--ink); font-weight: 650; }
+.balance-note span { color: rgba(23,50,77,.34); padding: 0 .2rem; }
+.quick-read-compact { min-height: 260px; }
+
+/* Reduz o espaço vertical padrão entre blocos do Streamlit sem colapsar controles. */
+[data-testid="stVerticalBlock"] { gap: .55rem; }
+[data-testid="stHorizontalBlock"] { gap: .75rem; }
+
 [data-testid="stDataFrame"] { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 [data-testid="stTabs"] [data-baseweb="tab-list"] { gap: .35rem; }
 [data-testid="stTabs"] [data-baseweb="tab"] { border-radius: 10px; padding-left: 1rem; padding-right: 1rem; }

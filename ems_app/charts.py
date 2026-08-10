@@ -55,7 +55,7 @@ def empty_chart(message: str, *, y_title: str = "Potência (kW)", height: int = 
     return _style(fig, height=height)
 
 
-def overview_power_chart(data: pd.DataFrame) -> go.Figure:
+def overview_power_chart(data: pd.DataFrame, *, height: int = 300) -> go.Figure:
     fig = go.Figure()
     if "carga_total_kW" in data:
         fig.add_trace(
@@ -86,11 +86,12 @@ def overview_power_chart(data: pd.DataFrame) -> go.Figure:
                 line={"color": COLORS["battery"], "width": 2},
             )
         )
-    fig.update_yaxes(title="Potência (kW)")
-    return _style(fig, height=410)
+    # Escala mais densa para leitura operacional: marcações a cada 5 kW.
+    fig.update_yaxes(title="Potência (kW)", dtick=5)
+    return _style(fig, height=height)
 
 
-def system_balance_chart(data: pd.DataFrame) -> go.Figure:
+def system_balance_chart(data: pd.DataFrame, *, height: int = 300) -> go.Figure:
     """Compara demanda e geração líquida total e destaca o desbalanço.
 
     A potência da bateria segue a convenção da EMS: positiva na descarga e
@@ -100,7 +101,7 @@ def system_balance_chart(data: pd.DataFrame) -> go.Figure:
         return empty_chart(
             "Aguardando o sinal de carga para fechar o balanço do sistema.<br>"
             "Ative os sinais demonstrativos ou forneça carga_total_kW no CSV.",
-            height=360,
+            height=height,
         )
 
     timestamp = pd.to_datetime(data["timestamp"])
@@ -187,8 +188,8 @@ def system_balance_chart(data: pd.DataFrame) -> go.Figure:
     fig.add_hline(
         y=0.0, line_width=1, line_dash="dot", line_color=COLORS["grid"]
     )
-    fig.update_yaxes(title="Potência (kW)")
-    return _style(fig, height=390)
+    fig.update_yaxes(title="Potência (kW)", dtick=5)
+    return _style(fig, height=height)
 
 
 def _series_energy_kwh(timestamp: pd.Series, power_kw: pd.Series) -> float:
@@ -221,7 +222,7 @@ def source_energy_shares(data: pd.DataFrame) -> dict[str, float]:
     return {name: value / total * 100.0 for name, value in energy.items()}
 
 
-def source_share_donut(data: pd.DataFrame) -> go.Figure:
+def source_share_donut(data: pd.DataFrame, *, height: int = 260) -> go.Figure:
     shares = source_energy_shares(data)
     labels = list(shares)
     values = list(shares.values())
@@ -250,10 +251,10 @@ def source_share_donut(data: pd.DataFrame) -> go.Figure:
         align="center",
         font={"size": 12, "color": COLORS["muted"]},
     )
-    return _style(fig, height=345, hovermode="closest")
+    return _style(fig, height=height, hovermode="closest")
 
 
-def pv_forecast_chart(solar_output: pd.DataFrame) -> go.Figure:
+def pv_forecast_chart(solar_output: pd.DataFrame, *, height: int = 285) -> go.Figure:
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(
         go.Scatter(
@@ -270,10 +271,10 @@ def pv_forecast_chart(solar_output: pd.DataFrame) -> go.Figure:
     )
     fig.update_yaxes(title="Potência (kW)", secondary_y=False)
     fig.update_yaxes(title="Irradiância (W/m²)", secondary_y=True, gridcolor="rgba(0,0,0,0)")
-    return _style(fig, height=330)
+    return _style(fig, height=height)
 
 
-def fuel_cell_power_chart(fuel_output: pd.DataFrame, *, height: int = 330) -> go.Figure:
+def fuel_cell_power_chart(fuel_output: pd.DataFrame, *, height: int = 285) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -291,11 +292,11 @@ def fuel_cell_power_chart(fuel_output: pd.DataFrame, *, height: int = 330) -> go
     return _style(fig, height=height)
 
 
-def battery_chart(data: pd.DataFrame) -> go.Figure:
+def battery_chart(data: pd.DataFrame, *, height: int = 260) -> go.Figure:
     if "potencia_bateria_kW" not in data:
         return empty_chart(
             "Espaço reservado para potência e estado de carga da bateria.<br>Ative os sinais sintéticos na aba Entradas para visualizar o layout.",
-            height=315,
+            height=height,
         )
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(
@@ -312,7 +313,7 @@ def battery_chart(data: pd.DataFrame) -> go.Figure:
     )
     fig.update_yaxes(title="Potência (kW)", secondary_y=False)
     fig.update_yaxes(title="SOC (%)", range=[0, 100], secondary_y=True, gridcolor="rgba(0,0,0,0)")
-    return _style(fig, height=315)
+    return _style(fig, height=height)
 
 
 def input_weather_chart(data: pd.DataFrame) -> go.Figure:

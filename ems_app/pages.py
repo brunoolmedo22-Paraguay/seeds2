@@ -63,14 +63,16 @@ def render_overview(bundle: SimulationBundle) -> None:
     has_load = "carga_total_kW" in data
     has_battery = "potencia_bateria_kW" in data
 
-    c1, c2, c3, c4, c5 = st.columns(5)
+    # KPIs compactos: mantemos a leitura instantânea sem consumir uma faixa alta
+    # do dashboard.
+    c1, c2, c3, c4, c5 = st.columns(5, gap="small")
     c1.metric(
-        "Carga estimada · pico",
-        f"{data['carga_total_kW'].max():.1f} kW" if has_load else "Aguardando sinal",
+        "Carga · pico",
+        f"{data['carga_total_kW'].max():.1f} kW" if has_load else "Aguardando",
     )
-    c2.metric("Energia FV · horizonte", f"{bundle.solar_metrics['energy_kWh']:.2f} kWh")
-    c3.metric("Potência FV · pico", f"{bundle.solar_metrics['peak_power_kW']:.2f} kW")
-    c4.metric("Energia PEMFC · entregue", f"{bundle.fuel_cell_metrics['energy_delivered_kWh']:.2f} kWh")
+    c2.metric("FV · energia", f"{bundle.solar_metrics['energy_kWh']:.2f} kWh")
+    c3.metric("FV · pico", f"{bundle.solar_metrics['peak_power_kW']:.2f} kW")
+    c4.metric("PEMFC · energia", f"{bundle.fuel_cell_metrics['energy_delivered_kWh']:.2f} kWh")
     c5.metric(
         "Bateria · SOC final",
         f"{data['soc_bateria_pct'].iloc[-1]:.1f}%" if has_battery else "Em integração",
@@ -78,41 +80,53 @@ def render_overview(bundle: SimulationBundle) -> None:
 
     if bundle.synthetic_signals_enabled:
         st.markdown(
-            '<div class="notice"><strong>Modo demonstrativo ativo.</strong> '
-            'Carga total, potência da bateria e SOC são sinais sintéticos usados somente para validar o dashboard. '
-            'Os resultados FV e PEMFC continuam sendo calculados pelos modelos.</div>',
+            '<div class="notice"><strong>Modo demonstrativo.</strong> '
+            'Carga e bateria são sinais sintéticos para validar o fechamento do EMS; FV e PEMFC continuam vindo dos modelos.</div>',
             unsafe_allow_html=True,
         )
 
-    _section("Potências do sistema · fontes, bateria e carga")
-    st.plotly_chart(overview_power_chart(data), width="stretch", key="overview_power")
+    # Os dois gráficos que explicam o sistema ficam lado a lado para reduzir
+    # drasticamente a verticalidade da página.
+    power_col, balance_col = st.columns(2, gap="medium")
+    with power_col:
+        _section("Potências do sistema · fontes, bateria e carga")
+        st.plotly_chart(
+            overview_power_chart(data, height=300),
+            width="stretch",
+            key="overview_power",
+        )
 
-    _section("Fechamento do balanço · geração total x carga")
-    st.plotly_chart(system_balance_chart(data), width="stretch", key="overview_balance")
-    if has_load:
-        # Calcula localmente para manter compatibilidade com bundles antigos
-        # eventualmente preservados pelo cache do Streamlit Cloud.
-        battery_power = (
-            pd.to_numeric(data["potencia_bateria_kW"], errors="coerce").fillna(0.0)
-            if "potencia_bateria_kW" in data
-            else pd.Series(0.0, index=data.index)
+    with balance_col:
+        _section("Fechamento do balanço · geração total x carga")
+        st.plotly_chart(
+            system_balance_chart(data, height=300),
+            width="stretch",
+            key="overview_balance",
         )
-        generation_total = (
-            pd.to_numeric(data["potencia_fv_kW"], errors="coerce").fillna(0.0)
-            + pd.to_numeric(data["potencia_fc_entregue_kW"], errors="coerce").fillna(0.0)
-            + battery_power
-        )
-        imbalance = generation_total - pd.to_numeric(
-            data["carga_total_kW"], errors="coerce"
-        ).fillna(0.0)
-        max_abs_imbalance = float(imbalance.abs().max())
-        mean_abs_imbalance = float(imbalance.abs().mean())
-        st.caption(
-            "Geração total = FV + PEMFC + bateria. "
-            "A bateria entra com sinal positivo quando descarrega e negativo quando carrega. "
-            f"|desbalanço| máximo nesta janela: {max_abs_imbalance:.2f} kW · "
-            f"médio: {mean_abs_imbalance:.2f} kW."
-        )
+        if has_load:
+            # Calcula localmente para manter compatibilidade com bundles antigos
+            # eventualmente preservados pelo cache do Streamlit Cloud.
+            battery_power = (
+                pd.to_numeric(data["potencia_bateria_kW"], errors="coerce").fillna(0.0)
+                if "potencia_bateria_kW" in data
+                else pd.Series(0.0, index=data.index)
+            )
+            generation_total = (
+                pd.to_numeric(data["potencia_fv_kW"], errors="coerce").fillna(0.0)
+                + pd.to_numeric(data["potencia_fc_entregue_kW"], errors="coerce").fillna(0.0)
+                + battery_power
+            )
+            imbalance = generation_total - pd.to_numeric(
+                data["carga_total_kW"], errors="coerce"
+            ).fillna(0.0)
+            max_abs_imbalance = float(imbalance.abs().max())
+            mean_abs_imbalance = float(imbalance.abs().mean())
+            st.markdown(
+                f'<div class="balance-note"><strong>|ΔP| máx.</strong> {max_abs_imbalance:.2f} kW '
+                f'<span>·</span> <strong>|ΔP| médio</strong> {mean_abs_imbalance:.2f} kW '
+                f'<span>·</span> bateria: + descarga / − carga</div>',
+                unsafe_allow_html=True,
+            )
 
     shares = source_energy_shares(data)
     dominant_source = max(shares, key=shares.get)
@@ -121,35 +135,53 @@ def render_overview(bundle: SimulationBundle) -> None:
         f"<li><span>{name}</span><strong>{value:.1f}%</strong></li>"
         for name, value in shares.items()
     )
-    donut_col, reading_col = st.columns([1.05, 1.35])
+
+    # Segunda faixa compacta: participação, leitura e bateria na mesma linha.
+    donut_col, reading_col, battery_col = st.columns([0.85, 1.0, 1.45], gap="medium")
     with donut_col:
-        _section("Participação · quem forneceu a energia")
-        st.plotly_chart(source_share_donut(data), width="stretch", key="overview_share")
+        _section("Participação · energia")
+        st.plotly_chart(
+            source_share_donut(data, height=260),
+            width="stretch",
+            key="overview_share",
+        )
     with reading_col:
-        _section("Leitura rápida · sem complicação")
+        _section("Leitura rápida")
         st.markdown(
             f"""
-            <div class="quick-read">
-              <span class="quick-kicker">Fonte principal nesta janela</span>
+            <div class="quick-read quick-read-compact">
+              <span class="quick-kicker">Fonte principal</span>
               <h3>{dominant_source}</h3>
-              <p><strong>{dominant_share:.1f}%</strong> da energia entregue pelas fontes veio dela.</p>
+              <p><strong>{dominant_share:.1f}%</strong> da energia positiva fornecida.</p>
               <ul>{share_items}</ul>
-              <div class="quick-note">Esta dona mostra a origem da energia produzida. A cobertura real da carga e o despacho ideal serão definidos quando o otimizador estiver conectado.</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
+    with battery_col:
+        _section("Bateria · potência e SOC")
+        st.plotly_chart(
+            battery_chart(data, height=260),
+            width="stretch",
+            key="overview_battery",
+        )
 
-    left, right = st.columns(2)
+    # Detalhe dos dois modelos ativos, também lado a lado e com menor altura.
+    left, right = st.columns(2, gap="medium")
     with left:
         _section("Fotovoltaica · previsão de geração")
-        st.plotly_chart(pv_forecast_chart(bundle.solar_output), width="stretch", key="overview_pv")
+        st.plotly_chart(
+            pv_forecast_chart(bundle.solar_output, height=285),
+            width="stretch",
+            key="overview_pv",
+        )
     with right:
         _section("PEMFC · solicitação e potência entregue")
-        st.plotly_chart(fuel_cell_power_chart(bundle.fuel_cell_output), width="stretch", key="overview_fc")
-
-    _section("Bateria · potência e estado de carga")
-    st.plotly_chart(battery_chart(data), width="stretch", key="overview_battery")
+        st.plotly_chart(
+            fuel_cell_power_chart(bundle.fuel_cell_output, height=285),
+            width="stretch",
+            key="overview_fc",
+        )
 
 
 def render_inputs(
