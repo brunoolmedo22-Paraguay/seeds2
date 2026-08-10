@@ -90,8 +90,23 @@ def render_overview(bundle: SimulationBundle) -> None:
     _section("Fechamento do balanço · geração total x carga")
     st.plotly_chart(system_balance_chart(data), width="stretch", key="overview_balance")
     if has_load:
-        max_abs_imbalance = float(data["desbalanco_potencia_kW"].abs().max())
-        mean_abs_imbalance = float(data["desbalanco_potencia_kW"].abs().mean())
+        # Calcula localmente para manter compatibilidade com bundles antigos
+        # eventualmente preservados pelo cache do Streamlit Cloud.
+        battery_power = (
+            pd.to_numeric(data["potencia_bateria_kW"], errors="coerce").fillna(0.0)
+            if "potencia_bateria_kW" in data
+            else pd.Series(0.0, index=data.index)
+        )
+        generation_total = (
+            pd.to_numeric(data["potencia_fv_kW"], errors="coerce").fillna(0.0)
+            + pd.to_numeric(data["potencia_fc_entregue_kW"], errors="coerce").fillna(0.0)
+            + battery_power
+        )
+        imbalance = generation_total - pd.to_numeric(
+            data["carga_total_kW"], errors="coerce"
+        ).fillna(0.0)
+        max_abs_imbalance = float(imbalance.abs().max())
+        mean_abs_imbalance = float(imbalance.abs().mean())
         st.caption(
             "Geração total = FV + PEMFC + bateria. "
             "A bateria entra com sinal positivo quando descarrega e negativo quando carrega. "
