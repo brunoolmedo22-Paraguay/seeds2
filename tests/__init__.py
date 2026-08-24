@@ -1,1 +1,0 @@
-"""Testes da integração EMS."""
